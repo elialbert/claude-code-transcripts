@@ -59,7 +59,9 @@ def extract_user_queries(session_data: dict, prompts_per_page: int = 5) -> list:
         # User messages have string content
         if isinstance(content, str) and content.strip():
             page_number = (prompt_count // prompts_per_page) + 1
-            user_queries.append((message_index, content[:1000], page_number))  # Limit to 1000 chars
+            user_queries.append(
+                (message_index, content[:1000], page_number)
+            )  # Limit to 1000 chars
             prompt_count += 1
         message_index += 1
 
@@ -89,7 +91,9 @@ def store_embeddings(
     db_session.query(ConversationEmbedding).filter_by(
         conversation_id=conversation_id
     ).delete()
-    db_session.query(MessageEmbedding).filter_by(conversation_id=conversation_id).delete()
+    db_session.query(MessageEmbedding).filter_by(
+        conversation_id=conversation_id
+    ).delete()
 
     # Generate and store conversation embedding
     if summary_text:

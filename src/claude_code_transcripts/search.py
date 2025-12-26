@@ -36,7 +36,8 @@ def search_transcripts(
     results = []
 
     # Search conversation embeddings (summaries)
-    conv_query = text("""
+    conv_query = text(
+        """
         SELECT
             ce.conversation_id,
             ce.summary_text,
@@ -51,7 +52,8 @@ def search_transcripts(
         JOIN conversations c ON ce.conversation_id = c.id
         ORDER BY ce.embedding <=> :embedding
         LIMIT :limit
-    """)
+    """
+    )
 
     conv_results = db_session.execute(
         conv_query, {"embedding": embedding_str, "limit": limit}
@@ -74,7 +76,8 @@ def search_transcripts(
         )
 
     # Search message embeddings (individual queries)
-    msg_query = text("""
+    msg_query = text(
+        """
         SELECT
             me.conversation_id,
             me.message_text,
@@ -89,7 +92,8 @@ def search_transcripts(
         JOIN conversations c ON me.conversation_id = c.id
         ORDER BY me.embedding <=> :embedding
         LIMIT :limit
-    """)
+    """
+    )
 
     msg_results = db_session.execute(
         msg_query, {"embedding": embedding_str, "limit": limit}
@@ -107,9 +111,11 @@ def search_transcripts(
                 "match_type": row[6],
                 "page_number": row[7],
                 "message_index": row[8],
-                "url": f"/transcript/{row[2]}/page-{row[7]:03d}.html#msg-{row[8]}"
-                if row[7]
-                else f"/transcript/{row[2]}",
+                "url": (
+                    f"/transcript/{row[2]}/page-{row[7]:03d}.html#msg-{row[8]}"
+                    if row[7]
+                    else f"/transcript/{row[2]}"
+                ),
             }
         )
 

@@ -67,8 +67,10 @@ The server will:
 - Serve transcripts at http://127.0.0.1:5000
 - Only re-generate HTML for changed conversations
 - Provide a web UI for browsing all transcripts
+- **Semantic search** - AI-powered search across all conversations
+- Generate and store vector embeddings for intelligent search
 
-See [SERVER.md](SERVER.md) for detailed server documentation.
+See [SERVER.md](SERVER.md) for detailed server documentation including semantic search setup.
 
 ### Output options
 

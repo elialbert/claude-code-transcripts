@@ -49,9 +49,7 @@ class Config:
         self.github_repo = os.environ.get("GITHUB_REPO")
 
         # Embedding model for semantic search
-        self.embedding_model = os.environ.get(
-            "EMBEDDING_MODEL", "all-MiniLM-L6-v2"
-        )
+        self.embedding_model = os.environ.get("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
 
     def __repr__(self):
         """Return a string representation of the config."""

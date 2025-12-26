@@ -74,8 +74,13 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_index("ix_message_embeddings_conversation_id", table_name="message_embeddings")
+    op.drop_index(
+        "ix_message_embeddings_conversation_id", table_name="message_embeddings"
+    )
     op.drop_table("message_embeddings")
-    op.drop_index("ix_conversation_embeddings_conversation_id", table_name="conversation_embeddings")
+    op.drop_index(
+        "ix_conversation_embeddings_conversation_id",
+        table_name="conversation_embeddings",
+    )
     op.drop_table("conversation_embeddings")
     op.execute("DROP EXTENSION IF EXISTS vector")

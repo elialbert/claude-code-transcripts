@@ -42,10 +42,15 @@ class ConversationEmbedding(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     conversation_id = Column(
-        Integer, ForeignKey("conversations.id", ondelete="CASCADE"), unique=True, nullable=False
+        Integer,
+        ForeignKey("conversations.id", ondelete="CASCADE"),
+        unique=True,
+        nullable=False,
     )
     summary_text = Column(Text, nullable=False)
-    embedding = Column(Vector(384), nullable=False)  # all-MiniLM-L6-v2 produces 384-dim vectors
+    embedding = Column(
+        Vector(384), nullable=False
+    )  # all-MiniLM-L6-v2 produces 384-dim vectors
     created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
 
     # Relationship

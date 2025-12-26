@@ -150,7 +150,10 @@ def create_app(config: Config):
         limit = int(request.args.get("limit", "20"))
 
         if not query:
-            return {"status": "error", "message": "Query parameter 'q' is required"}, 400
+            return {
+                "status": "error",
+                "message": "Query parameter 'q' is required",
+            }, 400
 
         db_session = app.config["DB_SESSION"]()
         try:
