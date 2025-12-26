@@ -15,7 +15,8 @@ from . import (
     resolve_credentials,
     generate_html_from_session_data,
 )
-from .models import Conversation
+from .models import Conversation, ConversationEmbedding, MessageEmbedding
+from .embeddings import get_embedding_service
 
 
 def needs_update(existing: Optional[Conversation], session_data: dict) -> bool:
@@ -36,6 +37,86 @@ def needs_update(existing: Optional[Conversation], session_data: dict) -> bool:
     # Check if message count has changed
     current_message_count = len(session_data.get("loglines", []))
     return current_message_count != existing.message_count
+
+
+def extract_user_queries(session_data: dict, prompts_per_page: int = 5) -> list:
+    """
+    Extract user queries from session data with page number information.
+
+    Args:
+        session_data: Parsed session data
+        prompts_per_page: Number of prompts per HTML page
+
+    Returns:
+        List of tuples: (message_index, message_text, page_number)
+    """
+    user_queries = []
+    message_index = 0
+    prompt_count = 0
+
+    for logline in session_data.get("loglines", []):
+        content = logline.get("content")
+        # User messages have string content
+        if isinstance(content, str) and content.strip():
+            page_number = (prompt_count // prompts_per_page) + 1
+            user_queries.append((message_index, content[:1000], page_number))  # Limit to 1000 chars
+            prompt_count += 1
+        message_index += 1
+
+    return user_queries
+
+
+def store_embeddings(
+    db_session: Session,
+    conversation_id: int,
+    summary_text: str,
+    user_queries: list,
+    model_name: str = "all-MiniLM-L6-v2",
+):
+    """
+    Generate and store embeddings for conversation and messages.
+
+    Args:
+        db_session: Database session
+        conversation_id: ID of the conversation
+        summary_text: Summary text for the conversation
+        user_queries: List of (message_index, message_text, page_number) tuples
+        model_name: Embedding model to use
+    """
+    embedding_service = get_embedding_service(model_name)
+
+    # Delete existing embeddings
+    db_session.query(ConversationEmbedding).filter_by(
+        conversation_id=conversation_id
+    ).delete()
+    db_session.query(MessageEmbedding).filter_by(conversation_id=conversation_id).delete()
+
+    # Generate and store conversation embedding
+    if summary_text:
+        summary_embedding = embedding_service.encode_single(summary_text)
+        conv_embedding = ConversationEmbedding(
+            conversation_id=conversation_id,
+            summary_text=summary_text[:500],  # Limit stored text
+            embedding=summary_embedding,
+        )
+        db_session.add(conv_embedding)
+
+    # Generate and store message embeddings in batch
+    if user_queries:
+        messages = [text for _, text, _ in user_queries]
+        embeddings = embedding_service.encode_batch(messages)
+
+        for (msg_idx, msg_text, page_num), embedding in zip(user_queries, embeddings):
+            msg_embedding = MessageEmbedding(
+                conversation_id=conversation_id,
+                message_index=msg_idx,
+                message_text=msg_text[:500],  # Limit stored text
+                embedding=embedding,
+                page_number=page_num,
+            )
+            db_session.add(msg_embedding)
+
+    db_session.commit()
 
 
 def sync_local_sessions(
@@ -102,6 +183,7 @@ def sync_local_sessions(
                 existing.message_count = message_count
                 existing.html_path = output_dir
                 existing.first_message = first_message
+                conversation_id = existing.id
             else:
                 conversation = Conversation(
                     session_id=session_id,
@@ -112,8 +194,23 @@ def sync_local_sessions(
                     first_message=first_message,
                 )
                 db_session.add(conversation)
+                db_session.flush()  # Get the ID
+                conversation_id = conversation.id
 
             db_session.commit()
+
+            # Generate and store embeddings
+            try:
+                user_queries = extract_user_queries(session_data)
+                store_embeddings(
+                    db_session,
+                    conversation_id,
+                    first_message or "",
+                    user_queries,
+                )
+            except Exception as e:
+                print(f"Error generating embeddings for {session_id}: {e}")
+
             updated_count += 1
 
         except Exception as e:
@@ -202,6 +299,7 @@ def sync_web_sessions(
                 existing.message_count = message_count
                 existing.html_path = output_dir
                 existing.first_message = first_message
+                conversation_id = existing.id
             else:
                 conversation = Conversation(
                     session_id=session_id,
@@ -212,8 +310,23 @@ def sync_web_sessions(
                     first_message=first_message,
                 )
                 db_session.add(conversation)
+                db_session.flush()  # Get the ID
+                conversation_id = conversation.id
 
             db_session.commit()
+
+            # Generate and store embeddings
+            try:
+                user_queries = extract_user_queries(session_data)
+                store_embeddings(
+                    db_session,
+                    conversation_id,
+                    first_message or "",
+                    user_queries,
+                )
+            except Exception as e:
+                print(f"Error generating embeddings for {session_id}: {e}")
+
             updated_count += 1
 
         except Exception as e:

@@ -12,6 +12,7 @@ from sqlalchemy.orm import scoped_session, sessionmaker
 from .config import Config
 from .models import init_db, get_engine, Conversation
 from .sync import sync_all
+from .search import search_transcripts
 
 
 def create_app(config: Config):
@@ -135,6 +136,28 @@ def create_app(config: Config):
                 "timestamp": datetime.utcnow().isoformat(),
                 "stats": stats,
             }
+        except Exception as e:
+            return {"status": "error", "message": str(e)}, 500
+        finally:
+            db_session.close()
+
+    @app.route("/search")
+    def search():
+        """Search transcripts using semantic similarity."""
+        from flask import request
+
+        query = request.args.get("q", "")
+        limit = int(request.args.get("limit", "20"))
+
+        if not query:
+            return {"status": "error", "message": "Query parameter 'q' is required"}, 400
+
+        db_session = app.config["DB_SESSION"]()
+        try:
+            results = search_transcripts(
+                db_session, query, limit=limit, model_name=config.embedding_model
+            )
+            return {"status": "success", "query": query, "results": results}
         except Exception as e:
             return {"status": "error", "message": str(e)}, 500
         finally:

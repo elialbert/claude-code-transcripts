@@ -1,6 +1,13 @@
 """Configuration management for the transcript server."""
 
 import os
+from pathlib import Path
+from dotenv import load_dotenv
+
+# Load .env file if it exists
+env_path = Path(".env")
+if env_path.exists():
+    load_dotenv(env_path)
 
 
 class Config:
@@ -40,6 +47,11 @@ class Config:
 
         # GitHub repo for commit links (optional)
         self.github_repo = os.environ.get("GITHUB_REPO")
+
+        # Embedding model for semantic search
+        self.embedding_model = os.environ.get(
+            "EMBEDDING_MODEL", "all-MiniLM-L6-v2"
+        )
 
     def __repr__(self):
         """Return a string representation of the config."""
